@@ -6,14 +6,14 @@ use Catalyst::Utils;
 use RPC::XML;
 use RPC::XML::Parser;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 __PACKAGE__->mk_classdata('_xmlrpc_parser');
 __PACKAGE__->_xmlrpc_parser( RPC::XML::Parser->new );
 
 =head1 NAME
 
-Catalyst::Plugin::XMLRPC - Dispatch XMLRPC with Catalyst
+Catalyst::Plugin::XMLRPC - Dispatch XMLRPC methods with Catalyst
 
 =head1 SYNOPSIS
 
@@ -40,11 +40,13 @@ Catalyst::Plugin::XMLRPC - Dispatch XMLRPC with Catalyst
 =head1 DESCRIPTION
 
 This plugin allows your controller class to dispatch XMLRPC methods
-from it's own class.
+from its own class.
 
 =head2 METHODS
 
-=head3 $c->xmlrpc
+=over 4
+
+=item $c->xmlrpc
 
 
 Call this method from a controller action to set it up as a endpoint
@@ -64,12 +66,7 @@ sub xmlrpc {
     if ( my $method = $req->{method} ) {
 
         # We have matching action
-        my $class = $req->{class} || '';
-        if ($class) {
-            my $prefix = Catalyst::Utils::class2classprefix( caller(0) );
-            $class = "$prefix\::$class";
-        }
-        else { $class = caller(0) }
+        my $class = caller(0);
         if ( my $code = $class->can($method) ) {
 
             # Find attribute
@@ -117,19 +114,11 @@ sub _deserialize_xmlrpc {
     my $req = $p->parse_done;
 
     # Handle . in method name
-    my $name  = $req->name;
-    my $class = '';
-    $name =~ s/\.+/\:\:/g;
-    if ( $name =~ /^(?:\:\:)?(.*)$/ ) {
-        $name = $1;
-        if ( $name =~ /(^[\w\:]+)\:\:(\w+)$/ ) {
-            $class = $1;
-            $name  = $2;
-        }
-    }
+    my $name = $req->name;
+    $name =~ s/\.//g;
     my @args = map { $_->value } @{ $req->args };
 
-    return { class => $class, method => $name, args => \@args };
+    return { method => $name, args => \@args };
 }
 
 # Serializes the response to $c->res->body
@@ -140,7 +129,9 @@ sub _serialize_xmlrpc {
     $c->res->body( $res->as_string );
 }
 
-=head1 NEW ACTION ATTRIBUTES
+=back 
+
+=head2 NEW ACTION ATTRIBUTES
 
 =over 4
 
