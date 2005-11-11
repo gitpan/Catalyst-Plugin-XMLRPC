@@ -1,7 +1,13 @@
 Revision history for Perl extension Catalyst::Plugin::XMLRPC
 
+0.04  Fri Nov 11 00:00:00 2005
+        - updated for Catalyst 5.5
+
+0.03  Sun May 15 00:00:00 2005
+        - added failure handling
+
 0.02  Sat Apr 23 23:00:00 2005
-        - Changed namespace handling, now fooBar.barFoo will be
+        - changed namespace handling, now fooBar.barFoo will be
           dispatched to fooBarbarFoo() in the actual class
 
 0.01  Thu Apr 07 16:00:00 2005

@@ -2,11 +2,11 @@ package Catalyst::Plugin::XMLRPC;
 
 use strict;
 use base 'Class::Data::Inheritable';
-use Catalyst::Utils;
+use attributes ();
 use RPC::XML;
 use RPC::XML::Parser;
 
-our $VERSION = '0.02';
+our $VERSION = '0.04';
 
 __PACKAGE__->mk_classdata('_xmlrpc_parser');
 __PACKAGE__->_xmlrpc_parser( RPC::XML::Parser->new );
@@ -46,42 +46,54 @@ from its own class.
 
 =over 4
 
-=item $c->xmlrpc
-
+=item $c->xmlrpc(%attrs)
 
 Call this method from a controller action to set it up as a endpoint
 for RPC methods in the same class.
 
+Supported attributes:
+    class: name of class to dispatch (defaults to current one)
+    method: method to dispatch to (overrides xmlrpc method)
+
 =cut
 
 sub xmlrpc {
-    my $c = shift;
+    my $c     = shift;
+    my $attrs = @_ > 1 ? {@_} : $_[0];
 
     # Deserialize
-    my $req = $c->_deserialize_xmlrpc;
+    my $req;
+    eval { $req = $c->_deserialize_xmlrpc };
+    if ( $@ || !$req ) {
+        $c->log->debug(qq/Invalid XMLRPC request "$@"/);
+        $c->_serialize_xmlrpc( RPC::XML::fault->new( -1, 'Invalid request' ) );
+        return 0;
+    }
 
     my $res = 0;
 
     # We have a method
-    if ( my $method = $req->{method} ) {
+    my $method = $attrs->{method} || $req->{method};
+    if ($method) {
 
         # We have matching action
-        my $class = caller(0);
+        my $class = $attrs->{class} || caller(0);
         if ( my $code = $class->can($method) ) {
 
             # Find attribute
             my $remote = 0;
-            for my $attr ( @{ Catalyst::Utils::attrs($code) } ) {
+            my $attrs = attributes::get($code) || [];
+            for my $attr (@$attrs) {
                 $remote++ if $attr eq 'Remote';
             }
 
             # We have attribute
             if ($remote) {
                 $class = $c->components->{$class} || $class;
-                my $args = join '', @{ $req->{args} };
                 my @args = @{ $c->req->args };
                 $c->req->args( $req->{args} );
-                $c->actions->{reverse}->{$code} ||= "$class->$method";
+                my $name = ref $class || $class;
+                $c->actions->{reverse}->{$code} ||= "$name->$method";
                 $c->state( $c->execute( $class, $code ) );
                 $res = $c->state;
                 $c->req->args( \@args );
@@ -102,7 +114,7 @@ sub xmlrpc {
 
     # Serialize response
     $c->_serialize_xmlrpc($res);
-    return 0;
+    return $res;
 }
 
 # Deserializes the xml in $c->req->body
@@ -149,9 +161,9 @@ L<Catalyst::Response>, L<Catalyst::Helper>, L<RPC::XML>
 
 =head1 AUTHOR
 
-Marcus Ramberg <mramberg@cpan.org>
-Christian Hansen
 Sebastian Riedel, C<sri@oook.de>
+Marcus Ramberg, C<mramberg@cpan.org>
+Christian Hansen
 
 =head1 LICENSE
 
