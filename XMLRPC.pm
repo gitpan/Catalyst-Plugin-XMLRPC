@@ -5,8 +5,10 @@ use base 'Class::Data::Inheritable';
 use attributes ();
 use RPC::XML;
 use RPC::XML::Parser;
+use Catalyst::Action;
+use Catalyst::Utils;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 __PACKAGE__->mk_classdata('_xmlrpc_parser');
 __PACKAGE__->_xmlrpc_parser( RPC::XML::Parser->new );
@@ -93,8 +95,18 @@ sub xmlrpc {
                 my @args = @{ $c->req->args };
                 $c->req->args( $req->{args} );
                 my $name = ref $class || $class;
-                $c->actions->{reverse}->{$code} ||= "$name->$method";
-                $c->state( $c->execute( $class, $code ) );
+                my $action = Catalyst::Action->new(
+                    {
+                        name      => $method,
+                        code      => $code,
+                        reverse   => "-> $name->$method",
+                        class     => $name,
+                        namespace => Catalyst::Utils::class2prefix(
+                            $name, $c->config->{case_sensitive}
+                        ),
+                    }
+                );
+                $c->state( $c->execute( $class, $action ) );
                 $res = $c->state;
                 $c->req->args( \@args );
             }
@@ -121,8 +133,10 @@ sub xmlrpc {
 sub _deserialize_xmlrpc {
     my $c = shift;
 
-    my $p = $c->_xmlrpc_parser->parse;
-    $p->parse_more( $c->req->body );
+    my $p       = $c->_xmlrpc_parser->parse;
+    my $body    = $c->req->body;
+    my $content = do { local $/; <$body> };
+    $p->parse_more($content);
     my $req = $p->parse_done;
 
     # Handle . in method name

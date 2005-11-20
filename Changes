@@ -1,5 +1,8 @@
 Revision history for Perl extension Catalyst::Plugin::XMLRPC
 
+0.05  Sun Nov 20 00:00:00 2005
+        - Fixed bugs
+
 0.04  Fri Nov 11 00:00:00 2005
         - updated for Catalyst 5.5
 
