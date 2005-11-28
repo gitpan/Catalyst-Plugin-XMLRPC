@@ -8,7 +8,7 @@ use RPC::XML::Parser;
 use Catalyst::Action;
 use Catalyst::Utils;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 __PACKAGE__->mk_classdata('_xmlrpc_parser');
 __PACKAGE__->_xmlrpc_parser( RPC::XML::Parser->new );
@@ -178,11 +178,12 @@ L<Catalyst::Response>, L<Catalyst::Helper>, L<RPC::XML>
 Sebastian Riedel, C<sri@oook.de>
 Marcus Ramberg, C<mramberg@cpan.org>
 Christian Hansen
+Yoshinori Sano
 
 =head1 LICENSE
 
-This library is free software . You can redistribute it and/or modify 
-it under the same terms as perl itself.
+This library is free software, you can redistribute it and/or modify 
+it under the same terms as Perl itself.
 
 =cut
 
