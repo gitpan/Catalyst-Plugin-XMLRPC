@@ -1,7 +1,10 @@
-use ExtUtils::MakeMaker;
+use inc::Module::Install;
 
-WriteMakefile(
-    'NAME'         => 'Catalyst::Plugin::XMLRPC',
-    'VERSION_FROM' => 'XMLRPC.pm',
-    'PREREQ_PM'    => { Catalyst => '5.01', RPC::XML => 1 }
-);
+name 'Catalyst-Plugin-XMLRPC';
+all_from 'lib/Catalyst/Plugin/XMLRPC.pm';
+
+requires Catalyst => '5.64';
+requires 'RPC::XML';
+
+auto_install;
+WriteAll;

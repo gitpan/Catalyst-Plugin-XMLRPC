@@ -1,50 +1,55 @@
 NAME
-    Catalyst::Plugin::XMLRPC - Dispatch XMLRPC with Catalyst
+    Catalyst::Plugin::XMLRPC - Dispatch XMLRPC methods with Catalyst
 
 SYNOPSIS
-        # include it in plugin list
+        # Include it in plugin list
         use Catalyst qw/XMLRPC/;
 
-        # Public action to redispatch
+        # Public action to redispatch somewhere in a controller
         sub entrypoint : Global {
             my ( $self, $c ) = @_;
+
+            # Redispatch to XMLRPC methods by calling this method
             $c->xmlrpc;
         }
 
-        # Methods with Remote attribute in same class
-        sub echo : Remote {
+        # Methods with XMLRPC attribute in any controller
+        sub echo : XMLRPC('myAPI.echo') {
             my ( $self, $c, @args ) = @_;
+            return RPC::XML::fault->new( 400, "No input!" ) unless @args;
             return join ' ', @args;
         }
 
-        sub add : Remote {
+        sub add : XMLRPC {
             my ( $self, $c, $a, $b ) = @_;
             return $a + $b;
         }
 
 DESCRIPTION
     This plugin allows your controller class to dispatch XMLRPC methods from
-    it's own class.
+    its own class.
 
-  METHODS
-   $c->xmlrpc
-    Call this method from a controller action to set it up as a endpoint for
-    RPC methods in the same class.
+METHODS
+  $c->xmlrpc
+    Call this method from a controller action to set it up as a endpoint.
 
-NEW ACTION ATTRIBUTES
-    Remote
-        The "Remote" attribute indicates that this action can be dispatched
-        through RPC mechanisms like XML-RPC
-
+  setup_dispatcher
 SEE ALSO
     Catalyst::Manual, Catalyst::Test, Catalyst::Request, Catalyst::Response,
     Catalyst::Helper, RPC::XML
 
 AUTHOR
-    Marcus Ramberg <mramberg@cpan.org> Christian Hansen Sebastian Riedel,
-    "sri@oook.de"
+    Sebastian Riedel, "sri@oook.de" Marcus Ramberg, "mramberg@cpan.org"
+    Christian Hansen Yoshinori Sano Michiel Ootjers Jos Boumans
 
 LICENSE
-    This library is free software . You can redistribute it and/or modify it
-    under the same terms as perl itself.
+    This library is free software, you can redistribute it and/or modify it
+    under the same terms as Perl itself.
+
+POD ERRORS
+    Hey! The above document had some coding errors, which are explained
+    below:
+
+    Around line 143:
+        =back without =over
 

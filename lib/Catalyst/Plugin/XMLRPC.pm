@@ -7,8 +7,9 @@ use RPC::XML;
 use RPC::XML::Parser;
 use Catalyst::Action;
 use Catalyst::Utils;
+use NEXT;
 
-our $VERSION = '0.06';
+our $VERSION = '1.0';
 
 __PACKAGE__->mk_classdata('_xmlrpc_parser');
 __PACKAGE__->_xmlrpc_parser( RPC::XML::Parser->new );
@@ -19,22 +20,25 @@ Catalyst::Plugin::XMLRPC - Dispatch XMLRPC methods with Catalyst
 
 =head1 SYNOPSIS
 
-    # include it in plugin list
+    # Include it in plugin list
     use Catalyst qw/XMLRPC/;
 
-    # Public action to redispatch
+    # Public action to redispatch somewhere in a controller
     sub entrypoint : Global {
         my ( $self, $c ) = @_;
+
+        # Redispatch to XMLRPC methods by calling this method
         $c->xmlrpc;
     }
 
-    # Methods with Remote attribute in same class
-    sub echo : Remote {
+    # Methods with XMLRPC attribute in any controller
+    sub echo : XMLRPC('myAPI.echo') {
         my ( $self, $c, @args ) = @_;
+        return RPC::XML::fault->new( 400, "No input!" ) unless @args;
         return join ' ', @args;
     }
 
-    sub add : Remote {
+    sub add : XMLRPC {
         my ( $self, $c, $a, $b ) = @_;
         return $a + $b;
     }
@@ -44,89 +48,72 @@ Catalyst::Plugin::XMLRPC - Dispatch XMLRPC methods with Catalyst
 This plugin allows your controller class to dispatch XMLRPC methods
 from its own class.
 
-=head2 METHODS
+=head1 METHODS
 
-=over 4
+=head2 $c->xmlrpc
 
-=item $c->xmlrpc(%attrs)
-
-Call this method from a controller action to set it up as a endpoint
-for RPC methods in the same class.
-
-Supported attributes:
-    class: name of class to dispatch (defaults to current one)
-    method: method to dispatch to (overrides xmlrpc method)
+Call this method from a controller action to set it up as a endpoint.
 
 =cut
 
 sub xmlrpc {
-    my $c     = shift;
-    my $attrs = @_ > 1 ? {@_} : $_[0];
+    my $c = shift;
 
     # Deserialize
     my $req;
     eval { $req = $c->_deserialize_xmlrpc };
     if ( $@ || !$req ) {
-        $c->log->debug(qq/Invalid XMLRPC request "$@"/);
+        $c->log->debug(qq/Invalid XMLRPC request "$@"/) if $c->debug;
         $c->_serialize_xmlrpc( RPC::XML::fault->new( -1, 'Invalid request' ) );
         return 0;
     }
 
-    my $res = 0;
+    my $res = RPC::XML::fault->new( -2, "No response for request" );
 
     # We have a method
-    my $method = $attrs->{method} || $req->{method};
+    my $method = $req->{method};
+    $c->log->debug(qq/XMLRPC request for "$method"/) if $c->debug;
+
     if ($method) {
 
-        # We have matching action
-        my $class = $attrs->{class} || caller(0);
-        if ( my $code = $class->can($method) ) {
+        my $container;
+        for my $type ( @{ $c->dispatcher->dispatch_types } ) {
+            $container = $type
+              if $type->isa('Catalyst::Plugin::XMLRPC::DispatchType::XMLRPC');
+        }
 
-            # Find attribute
-            my $remote = 0;
-            my $attrs = attributes::get($code) || [];
-            for my $attr (@$attrs) {
-                $remote++ if $attr eq 'Remote';
-            }
-
-            # We have attribute
-            if ($remote) {
+        if ($container) {
+            if ( my $action = $container->{methods}{$method} ) {
+                my $class = $action->class;
                 $class = $c->components->{$class} || $class;
                 my @args = @{ $c->req->args };
                 $c->req->args( $req->{args} );
-                my $name = ref $class || $class;
-                my $action = Catalyst::Action->new(
-                    {
-                        name      => $method,
-                        code      => $code,
-                        reverse   => "-> $name->$method",
-                        class     => $name,
-                        namespace => Catalyst::Utils::class2prefix(
-                            $name, $c->config->{case_sensitive}
-                        ),
-                    }
-                );
                 $c->state( $c->execute( $class, $action ) );
                 $res = $c->state;
                 $c->req->args( \@args );
             }
-
-            else {
-                $c->log->debug(qq/Method "$method" has no Remote attribute/)
-                  if $c->debug;
-            }
+            else { RPC::XML::fault->new( -4, "Unknown method" ) }
         }
-
-        else {
-            $c->log->debug(qq/Couldn't find xmlrpc method "$method"/)
-              if $c->debug;
-        }
+        else { $res = RPC::XML::fault->new( -3, "Please come back later" ) }
 
     }
 
     # Serialize response
     $c->_serialize_xmlrpc($res);
     return $res;
+}
+
+=head2 setup_dispatcher
+
+=cut
+
+# Register our DispatchType
+sub setup_dispatcher {
+    my $c = shift;
+    $c->NEXT::setup_dispatcher(@_);
+    push @{ $c->dispatcher->preload_dispatch_types },
+      '+Catalyst::Plugin::XMLRPC::DispatchType::XMLRPC';
+    return $c;
 }
 
 # Deserializes the xml in $c->req->body
@@ -139,9 +126,7 @@ sub _deserialize_xmlrpc {
     $p->parse_more($content);
     my $req = $p->parse_done;
 
-    # Handle . in method name
     my $name = $req->name;
-    $name =~ s/\.//g;
     my @args = map { $_->value } @{ $req->args };
 
     return { method => $name, args => \@args };
@@ -154,17 +139,6 @@ sub _serialize_xmlrpc {
     $c->res->content_type('text/xml');
     $c->res->body( $res->as_string );
 }
-
-=back 
-
-=head2 NEW ACTION ATTRIBUTES
-
-=over 4
-
-=item Remote
-
-The "Remote" attribute indicates that this action can be dispatched
-through RPC mechanisms like XML-RPC
 
 =back
 
@@ -179,6 +153,8 @@ Sebastian Riedel, C<sri@oook.de>
 Marcus Ramberg, C<mramberg@cpan.org>
 Christian Hansen
 Yoshinori Sano
+Michiel Ootjers
+Jos Boumans
 
 =head1 LICENSE
 

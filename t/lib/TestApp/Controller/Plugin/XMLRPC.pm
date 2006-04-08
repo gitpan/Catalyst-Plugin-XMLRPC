@@ -13,13 +13,13 @@ sub rpc : Global {
     $c->xmlrpc;
 }
 
-sub echo : Remote {
+sub echo : XMLRPC('myAPI.echo') {
     my ( $self, $c, @args ) = @_;
     return join ' ', @args;
 }
 
-sub add : Remote {
-    my ( $self, $c, $a, $b) = @_;
+sub add : XMLRPC {
+    my ( $self, $c, $a, $b ) = @_;
     return $a + $b;
 }
 
