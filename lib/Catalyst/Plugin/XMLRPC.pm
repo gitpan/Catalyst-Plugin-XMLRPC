@@ -4,19 +4,19 @@ use strict;
 use base 'Class::Data::Inheritable';
 use attributes ();
 use RPC::XML;
-use RPC::XML::Parser;
+use RPC::XML::ParserFactory 'XML::Parser';
 use Catalyst::Action;
 use Catalyst::Utils;
 use NEXT;
 
-our $VERSION = '1.0';
+our $VERSION = '2.01';
 
 __PACKAGE__->mk_classdata('_xmlrpc_parser');
-__PACKAGE__->_xmlrpc_parser( RPC::XML::Parser->new );
+__PACKAGE__->_xmlrpc_parser( RPC::XML::ParserFactory->new );
 
 =head1 NAME
 
-Catalyst::Plugin::XMLRPC - Dispatch XMLRPC methods with Catalyst
+Catalyst::Plugin::XMLRPC - DEPRECATED Dispatch XMLRPC methods with Catalyst
 
 =head1 SYNOPSIS
 
@@ -24,12 +24,7 @@ Catalyst::Plugin::XMLRPC - Dispatch XMLRPC methods with Catalyst
     use Catalyst qw/XMLRPC/;
 
     # Public action to redispatch somewhere in a controller
-    sub entrypoint : Global {
-        my ( $self, $c ) = @_;
-
-        # Redispatch to XMLRPC methods by calling this method
-        $c->xmlrpc;
-    }
+    sub entrypoint : Global : Action('XMLRPC') {}
 
     # Methods with XMLRPC attribute in any controller
     sub echo : XMLRPC('myAPI.echo') {
@@ -44,6 +39,8 @@ Catalyst::Plugin::XMLRPC - Dispatch XMLRPC methods with Catalyst
     }
 
 =head1 DESCRIPTION
+
+This plugin is DEPRECATED. Please do not use in new code.
 
 This plugin allows your controller class to dispatch XMLRPC methods
 from its own class.
@@ -92,7 +89,7 @@ sub xmlrpc {
                 $res = $c->state;
                 $c->req->args( \@args );
             }
-            else { RPC::XML::fault->new( -4, "Unknown method" ) }
+            else { $res = RPC::XML::fault->new( -4, "Unknown method" ) }
         }
         else { $res = RPC::XML::fault->new( -3, "Please come back later" ) }
 
@@ -140,14 +137,12 @@ sub _serialize_xmlrpc {
     $c->res->body( $res->as_string );
 }
 
-=back
-
 =head1 SEE ALSO
 
 L<Catalyst::Manual>, L<Catalyst::Test>, L<Catalyst::Request>,
 L<Catalyst::Response>, L<Catalyst::Helper>, L<RPC::XML>
 
-=head1 AUTHOR
+=head1 AUTHORS
 
 Sebastian Riedel, C<sri@oook.de>
 Marcus Ramberg, C<mramberg@cpan.org>
@@ -155,6 +150,12 @@ Christian Hansen
 Yoshinori Sano
 Michiel Ootjers
 Jos Boumans
+
+=head1 COPYRIGHT
+
+Copyright (c) 2005
+the Catalyst::Plugin::XMLRPC L</AUTHORS>
+as listed above.
 
 =head1 LICENSE
 

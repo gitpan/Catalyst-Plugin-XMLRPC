@@ -24,7 +24,7 @@ Debug output for XMLRPC dispatch points
 
 sub list {
     my ( $self, $c ) = @_;
-    my $methods = Text::SimpleTable->new( [ 36, 'Method' ], [ 37, 'Private' ] );
+    my $methods = Text::SimpleTable->new( [ 35, 'Method' ], [ 36, 'Private' ] );
     for my $method ( sort keys %{ $self->{methods} } ) {
         my $action = $self->{methods}->{$method};
         $methods->row( "$method", "/$action" );
